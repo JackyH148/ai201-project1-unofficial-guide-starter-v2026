@@ -55,42 +55,32 @@ in at least 4 of 5 tries.
 
 ---
 
-## 4. Something about your chunks
+## 4. No chunk is shorter than 200 characters, since anything below that in my corpus turned out to be a heading with no content under it.
 
-<!-- YOU WRITE THIS ONE.
-
-     How would you know if your chunks were the right size? Name something
-     countable or observable.
-
-     Examples of the right shape — don't copy these, they should come from
-     what you actually saw in Milestone 3:
-       - "At least 4 of 5 sampled chunks read as a complete thought, with no
-          sentence cut in half at either end."
-       - "No chunk is shorter than 200 characters, since anything below that
-          in my corpus turned out to be a heading with no content under it." -->
+<!-- A chunck under 200 characters may be missing a lot of context.
+     This criteria is to prevent that from happening, so that the
+     answers given is given in full.-->
 
 
 
 **Why this target:**
-
+<!-- Why did it look like the answer is missing some context
+     and feel overly general. I want more context supporting
+     the answer to the question -->
 
 
 ---
 
-## 5. Your choice
+## 5. If it gets corrected one somethind and find out its right, I want it to add this example to its knowledge base
 
-<!-- YOU WRITE THIS ONE TOO.
-
-     Pick something you actually care about getting right. It could be about
-     speed, about refusals, about a particular kind of question your corpus
-     handles badly, about source attribution being correct rather than merely
-     present — anything, as long as it names a number or an observable
-     outcome. -->
-
+<!-- I want the AI to be self learning. Since AI is not expected
+     to get everything right, I want it to at least be better
+     than it was before and realize its own mistake and fix it. -->
 
 
 **Why this target:**
-
+<!-- Why is it making this mistake again? I thought we just covered
+     this example. This doesnt seen reliable-->
 
 
 ---
