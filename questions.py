@@ -23,11 +23,11 @@ names a target of "4 of 5", and four of three is not a thing.
 
 QUESTIONS = [
     # {"question": "...", "expects": "..."},
-    {"question": "What is the distribution between the 3 midterms in the stats 150 course?", "expects": "the 3 midterms are distributed equally."},
-    {"question": "What day of the week is the worst time to do laundry?", "expects": "Sunday is the worst day of the week to do laundry."},
-    {"question": "When is Ridgeway Café the best time for studying besides the library?", "expects": "Before 10am is empty, quiet, good coffee, and they don't push you out"},
-    {"question": "How are the buildings during winter?", "expects": "The buildings in winter are overheated"},
-    {"question": "How do I get to Elder Ness?", "expects": "A single road in, which floods at the highest spring tides roughly six times a year for about two hours either side of high water. Tide tables are posted at the turning and are worth reading. No public transport of any kind. Nearest station is Pellew Sands, 40 minutes by road."},
+    {"question": "where are the freshman dorms", "expects": "place"},
+    {"question": "when are the office hours of your statistics class", "expects": "time"},
+    {"question": "how do you get to the nearest supermarket near campus", "expects": "method"},
+    {"question": "which dining area has the best food on campus", "expects": "place name"},
+    {"question": "when does the campus host a annual hackathon", "expects": "time"},
 ]
 
 # Questions from a different world entirely. Your gate should refuse all five.

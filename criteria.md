@@ -23,8 +23,7 @@ For at least 4 of my 5 test questions, the retrieved chunks include one that
 contains the answer.
 
 **Why this target:**
-<!-- e.g. "One of my questions is about a topic only two documents mention, so
-     I expect that one to be hard." -->
+One of my questions is about a topic only two documents mention, so I expect that one to be hard.
 
 ---
 
@@ -33,8 +32,7 @@ contains the answer.
 Every answer the system produces names at least one source document.
 
 **Why this target:**
-<!-- Why all five and not four? What about your setup makes that achievable —
-     or what would have to go wrong for it not to be? -->
+Why all five and not four? What about your setup makes that achievable or what would have to go wrong for it not to be?
 
 ---
 
@@ -57,30 +55,27 @@ in at least 4 of 5 tries.
 
 ## 4. No chunk is shorter than 200 characters, since anything below that in my corpus turned out to be a heading with no content under it.
 
-<!-- A chunck under 200 characters may be missing a lot of context.
+A chunck under 200 characters may be missing a lot of context.
      This criteria is to prevent that from happening, so that the
-     answers given is given in full.-->
+     answers given is given in full.
 
 
 
 **Why this target:**
-<!-- Why did it look like the answer is missing some context
-     and feel overly general. I want more context supporting
-     the answer to the question -->
+I want the system to be able to provide proper context and give enough information for the users to make a decision
 
 
 ---
 
 ## 5. If it gets corrected one somethind and find out its right, I want it to add this example to its knowledge base
 
-<!-- I want the AI to be self learning. Since AI is not expected
+I want the AI to be self learning. Since AI is not expected
      to get everything right, I want it to at least be better
-     than it was before and realize its own mistake and fix it. -->
+     than it was before and realize its own mistake and fix it.
 
 
 **Why this target:**
-<!-- Why is it making this mistake again? I thought we just covered
-     this example. This doesnt seen reliable-->
+I want the AI to learn from its mistake so that when it is asked the same thing again, it will answer correctly
 
 
 ---

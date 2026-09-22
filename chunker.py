@@ -1,31 +1,19 @@
 """
 Stage 2 of the pipeline: splitting documents into chunks.
 
-⚠️ THIS IS THE FILE YOU CHANGE IN MILESTONE 3.
-
-`split_documents` below is deliberately plain. It cuts every document into
-fixed-size pieces with a fixed overlap and pays no attention to where sentences
-or paragraphs end. It works, and it is not good.
-
-On a corpus of short posts it may not cut anything at all: `campus_life` comes
-out as 88 documents and 88 chunks, because almost nothing in it reaches 800
-characters. That is the baseline, not a bug — Milestone 3 is where you decide
-whether one post should stay one chunk.
-
-Your job in Milestone 3 is to replace the *body* of `split_documents` with a
-strategy that fits the documents you actually read in Milestone 1. Keep the
-name and the shape of what it returns — the rest of the pipeline calls it, and
-your README has to name the function that produced your chunks.
-
-If you get stuck for 30 minutes, `fallback_split` is the original. Switch back
-to it, write down what you saw, and move on. That's a real observation about
-your pipeline, not giving up.
+Milestone 3: `split_documents` now splits on paragraph breaks instead of a
+fixed character window. Rationale in that function's docstring.
 """
 
+import re
 from dataclasses import dataclass
 
 import config
 from ingest import Document
+
+TARGET_SIZE = 700   # stop packing paragraphs past this
+HARD_MAX = 900      # blunt-cut anything still longer
+MIN_SIZE = 120      # a fragment this short always joins the chunk before it
 
 
 @dataclass
@@ -82,22 +70,38 @@ def fallback_split(
 
 def split_documents(documents: list[Document]) -> list[Chunk]:
     """
-    Split documents into chunks. ⚠️ REPLACE THE BODY OF THIS IN MILESTONE 3.
+    Split on paragraph breaks, packing up to TARGET_SIZE.
 
-    Right now it just calls the fallback. That is the plain, generic behaviour
-    the brief is talking about.
-
-    When you write your own strategy, set `produced_by` to
-    "chunker.py::split_documents" so your README's Sample Chunks section names
-    the right function. `app.py chunks` prints that string for you.
-
-    Things worth thinking about before you write any code:
-      - Are your documents short posts or long guides?
-      - Is the useful information in one sentence, or spread over a paragraph?
-      - Would splitting on paragraph breaks keep more thoughts intact than
-        splitting on a character count?
+    A blank line is where the author signalled a thought ended, so that is the
+    boundary; the character counts only decide when to stop packing (700) and
+    when to cut inside an oversized paragraph (900). No overlap: cuts land on
+    blank lines, so no sentence is severed and overlap would only duplicate
+    text. Short paragraphs are absorbed into the chunk before them, which is
+    what prevents the 2-character tail `fallback_split` leaves behind.
     """
-    return fallback_split(documents)
+    chunks: list[Chunk] = []
+    for doc in documents:
+        pieces: list[str] = []
+        for para in re.split(r"\n\s*\n", doc.text):
+            para = para.strip()
+            if not para:
+                continue
+            limit = TARGET_SIZE if len(para) >= MIN_SIZE else HARD_MAX
+            if pieces and len(pieces[-1]) + len(para) + 2 <= limit:
+                pieces[-1] += "\n\n" + para
+            else:
+                pieces.append(para)
+        cut = [p[i : i + HARD_MAX] for p in pieces for i in range(0, len(p), HARD_MAX)]
+        for index, text in enumerate(cut):
+            chunks.append(
+                Chunk(
+                    text=text,
+                    source=doc.source,
+                    index=index,
+                    produced_by="chunker.py::split_documents",
+                )
+            )
+    return chunks
 
 
 def describe(chunks: list[Chunk]) -> str:
