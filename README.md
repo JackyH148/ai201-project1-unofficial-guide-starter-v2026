@@ -38,15 +38,27 @@
 **Chunk size:**317 because it is the average characters in the documents and the context in each document should be the same throughout the document
 **Overlap:** 120 (unchanged)
 
-<!-- What about YOUR documents made you pick these numbers? Short posts and
-     long sectioned guides don't want the same chunking, and "800 seemed
-     reasonable" earns nothing. Point at something you noticed when you read
-     the documents in Milestone 1.
 
-     If you changed your mind partway through, say so and say why. That's worth
-     more than pretending you got it right first time.
+My chunker splits on paragraph breaks, not on a character count. The character
+numbers are secondary: 700 decides when to stop packing paragraphs into a
+chunk, 900 is the only point at which I cut inside a paragraph, and 120 is the
+floor below which a fragment gets merged into the chunk before it.
 
-     Milestone 3. -->
+Why: these documents are short student posts with a consistent shape — a
+header line, then two or three paragraphs. A blank line is where the author
+finished a thought, so that is the boundary worth respecting. The starter's
+800-character window never fired on most posts and sliced arbitrarily through
+the ones it did.
+
+Overlap is zero because cuts land on blank lines, so no sentence is severed.
+Overlap exists to rescue context across a mid-sentence cut; with a paragraph
+boundary there is nothing to rescue, and it would only duplicate text and make
+near-identical chunks compete in retrieval.
+
+The 120 floor came from a problem I saw in the starter: on one document it
+produced a 2-character chunk, the leftover tail of a document that didn't
+divide evenly into 800-character windows. A fragment that short carries no
+retrievable meaning.
 
 ## Sample Chunks
 
@@ -137,12 +149,30 @@ without reading what came before or after?
 
 ## Sample Answer
 
-<!-- One complete question and answer, pasted as text, with the source line
-     visible. Milestone 4. -->
+## Sample Answer
 
-**Question:**
+**Question:** how do Halden Hall and Pellew Dining Hall compare on wait times
 
 **Answer:**
+
+```
+  (best distance 0.259, cutoff 0.6)
+
+Halden Hall has wait times that are rarely more than 8 minutes, even at noon
+(*dining_halden_hall.txt*). In contrast, Pellew Dining Hall has wait times of
+12 to 18 minutes at peak hours (*dining_pellew_dining_hall.txt*).
+
+Sources retrieved: dining_halden_hall.txt, dining_halden_hall_followup.txt,
+dining_kestrel_commons_followup.txt, dining_pellew_dining_hall.txt,
+dining_pellew_dining_hall_followup.txt
+
+1 model calls this session, 763 tokens (698 in, 65 out)
+```
+
+Both source documents use an identical "Wait times:" template and appeared in
+the same retrieval window, so this question tested whether the answer would
+blend them. Each figure stayed attached to the correct hall, and each claim
+cites the file it came from.
 
 ```
 ```
@@ -162,20 +192,87 @@ without reading what came before or after?
 |---|---|---|
 |  |  |  |
 
+**Cutoff: 0.60** (kept the starter default — see justification below)
+
+### In-scope questions
+
+| question | best distance | gate |
+|---|---|---|
+| where on campus can you get real espresso | 0.4194 | pass |
+| what is worth ordering at Verrill Street Grill | 0.4623 | pass |
+| which dining area has the best food on campus | 0.4881 | pass |
+| which dining hall bakes its own bread | 0.5425 | pass |
+| when does the campus host an annual hackathon | 0.6552 | refuse |
+
+Answerable range: 0.4194 – 0.5425
+
+### Out-of-scope questions
+
+| question | best distance | gate |
+|---|---|---|
+| What is the capital of Mongolia? | 0.8246 | refuse |
+| What is the recommended dosage of ibuprofen for a headache? | 0.8442 | refuse |
+| Who won the 1994 World Cup? | 0.8859 | refuse |
+| How do I write a for loop in Rust? | 0.8960 | refuse |
+| How do I change the oil in a diesel engine? | 0.9340 | refuse |
+
+Range: 0.8246 – 0.9340. **5 of 5 refused** (criterion 3 target: 4 of 5).
+
+### Why 0.60
+
+The gap runs from 0.5425 to 0.8246 — 0.28 wide. The midpoint would be 0.68,
+but the hackathon question sits at 0.6552, inside the gap. It is phrased like
+an in-scope question and retrieves campus documents, but the corpus contains
+no events content, so it has no answer. A cutoff of 0.68 would pass it to the
+model; 0.60 refuses it at the gate for zero cost.
+
+At 0.60 the margins are near-symmetric: the closest passing question clears by
+0.0575, the closest refusal clears by 0.0552.
+
+Verified: `python app.py ask "What is the capital of Mongolia?"` returned
+"I don't have enough information about that" and reported **0 model calls** —
+the gate refused before reaching the model, as intended.
+
+### What the distances do and don't measure
+
+Distance measures topical similarity, not whether the answer is present.
+Two observations from the retrieved chunks:
+
+- "where on campus can you get real espresso" returned
+  `housing_old_brewhouse.txt` at rank 2 (0.5343), ahead of several dining
+  documents. "Brewhouse" is lexical overlap with coffee, not a place to get
+  espresso.
+- Every out-of-scope question retrieved its nearest topical relative:
+  Mongolia and the 1994 World Cup both pulled `course_hist_118`, the Rust
+  question pulled writing and history courses. The embedding always returns
+  its closest neighbour — the gate, not retrieval, is what makes refusal
+  possible.
+
+The hackathon question is the clearest case: retrieval behaved correctly and
+returned campus documents, and the question was still unanswerable. A cutoff
+can catch a wrong topic; it cannot detect a missing fact.
+
+Note on top-k: `dining_halden_hall.txt` ranked 1 (0.5425) but its follow-up
+`dining_halden_hall_followup.txt` ranked 5 (0.6505), with three unrelated
+dining halls in between. Posts and their follow-ups do not rank adjacently,
+so k=5 barely captures both halves of one topic — a question whose answer
+sits only in a follow-up could fall outside the window.
+
 ## How I Used AI
 
-<!-- Two specific moments. For each: what you asked for, what came back, and
-     what you changed about it.
+**1.** I asked Claude for a chunking function and got one using paragraph
+boundaries with helper functions at module level. My brief required everything
+inside `split_documents`, so I had it nest them. Its first version still
+produced a 2-character chunk on a document ending in a short paragraph — the
+exact bug I was trying to fix — because a runt only merged backwards if the
+result stayed under 700. I had it change the merge limit to 900 for fragments
+under the floor.
 
-     "I asked Claude to write the chunking function from my notes. It ignored
-     the overlap, so I added that myself" is the level of detail we're after.
-     "I used AI to help me code" is not.
-
-     Milestone 5. -->
-
-**1.**
-
-**2.**
+**2.** I asked it to interpret my retrieval distances. It pointed out that my
+in-scope and out-of-scope groups were 0.28 apart, but that two later probe
+questions landed at 0.598 and 0.614 — on opposite sides of my cutoff by less
+than 0.02. I would have reported the 0.28 gap as comfortable; the probe
+numbers are in the README instead.
 
 <!-- ── Stretch features ─────────────────────────────────────────────────────
      Doing one? Say so here BEFORE you start. A feature this README never
