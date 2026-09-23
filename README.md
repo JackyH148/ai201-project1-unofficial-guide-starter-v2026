@@ -27,11 +27,26 @@
 
      Milestone 5. -->
 
-{"question": "What is the distribution between the 3 midterms in the stats 150 course?", "expects": "the 3 midterms are distributed equally."},
-{"question": "What day of the week is the worst time to do laundry?", "expects": "Sunday is the worst day of the week to do laundry."},
-{"question": "When is Ridgeway Café the best time for studying besides the library?", "expects": "Before 10am is empty, quiet, good coffee, and they don't push you out"},
-{"question": "How are the buildings during winter?", "expects": "The buildings in winter are overheated"},
-{"question": "How do I get to Elder Ness?", "expects": "A single road in, which floods at the highest spring tides roughly six times a year for about two hours either side of high water. Tide tables are posted at the turning and are worth reading. No public transport of any kind. Nearest station is Pellew Sands, 40 minutes by road."}
+## What This Does
+
+This answers questions from an unofficial student guide to a university, built
+as a retrieval-augmented pipeline over the `CORPUS_NAME` corpus — N short
+posts written first-person by students, covering dining halls, residence halls
+and their laundry rooms, courses and their workloads, campus transit, and
+administrative topics like add/drop deadlines and meal plan changes. Many
+topics appear as a pair: an original post and a follow-up that adds to or
+corrects it.
+
+Ask a question and it embeds it, retrieves the five most similar chunks, and
+refuses if the closest one is further than 0.60 away. If it passes that gate,
+the retrieved text is sent to the model with an instruction to answer only
+from those documents and name the file each claim came from.
+
+It handles specific factual questions — "which dining hall bakes its own
+bread", "how do Halden Hall and Pellew compare on wait times" — and refuses
+two different kinds of question it can't answer: off-topic ones, which the
+gate catches on distance, and on-topic ones the posts simply don't cover,
+which the model catches when the retrieved text doesn't contain the fact.
 
 ## Chunking Strategy
 
@@ -149,8 +164,6 @@ without reading what came before or after?
 
 ## Sample Answer
 
-## Sample Answer
-
 **Question:** how do Halden Hall and Pellew Dining Hall compare on wait times
 
 **Answer:**
@@ -260,19 +273,31 @@ sits only in a follow-up could fall outside the window.
 
 ## How I Used AI
 
-**1.** I asked Claude for a chunking function and got one using paragraph
-boundaries with helper functions at module level. My brief required everything
-inside `split_documents`, so I had it nest them. Its first version still
-produced a 2-character chunk on a document ending in a short paragraph — the
-exact bug I was trying to fix — because a runt only merged backwards if the
-result stayed under 700. I had it change the merge limit to 900 for fragments
-under the floor.
 
-**2.** I asked it to interpret my retrieval distances. It pointed out that my
-in-scope and out-of-scope groups were 0.28 apart, but that two later probe
-questions landed at 0.598 and 0.614 — on opposite sides of my cutoff by less
-than 0.02. I would have reported the 0.28 gap as comfortable; the probe
-numbers are in the README instead.
+**1.** I asked Claude to write a replacement for `split_documents`, telling it
+my documents were short first-person student posts with a header line and two
+or three paragraphs. It came back with a paragraph-boundary splitter — right
+idea — but with four helper functions at module level, and with runt-merging
+that only absorbed a short trailing paragraph if the result stayed under the
+700-character target. That meant a document ending in a two-character line
+after a long paragraph still emitted a two-character chunk, the exact starter
+bug I was replacing. I nested the helpers inside `split_documents` because my
+brief wanted the strategy in one function, and changed the merge rule so
+fragments below the 120 floor merge up to the 900 hard maximum instead:
+
+    limit = TARGET_SIZE if len(para) >= MIN_SIZE else HARD_MAX
+
+**2.** I asked Claude whether `GROUNDING_INSTRUCTION` was strict enough for my
+corpus. It proposed three additions: attribute claims to the student who made
+them, never combine details from two documents into one claim, and report both
+sides when a post and its follow-up disagree. The blending rule looked like the
+important one, since five near-identical dining documents with identical "Wait
+times:" lines show up in a single retrieval window. I tested it before adding
+anything — asked "how do Halden Hall and Pellew Dining Hall compare on wait
+times" with both documents retrieved — and the unmodified instruction kept both
+figures attached to the correct hall with the correct filename. I dropped the
+blending and disagreement rules and kept only the attribution one, which my
+probe answers did violate by reporting one student's wait time as fact.
 
 <!-- ── Stretch features ─────────────────────────────────────────────────────
      Doing one? Say so here BEFORE you start. A feature this README never

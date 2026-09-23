@@ -29,41 +29,42 @@ One of my questions is about a topic only two documents mention, so I expect tha
 
 ## 2. Every answer names a source
 
-Every answer the system produces names at least one source document.
-
 **Why this target:**
-Why all five and not four? What about your setup makes that achievable or what would have to go wrong for it not to be?
+`build_prompt` labels every chunk `[from {source}]`, so the filename is always
+in front of the model, and `GROUNDING_INSTRUCTION` requires naming it. The
+mechanism is already there — five of five is the right bar because a missing
+citation isn't a near miss, it's an untraceable answer. What would have to go
+wrong: the model answering from training data instead of the documents, or
+dropping the citation under the instruction's two-or-three-sentence brevity
+rule, which is where I'd expect it to give first.
 
 ---
 
 ## 3. The relevance gate stops out-of-corpus questions
 
-When I ask a question my documents clearly don't cover, the relevance gate
-stops it and the system returns "I don't have enough information about that" —
-in at least 4 of 5 tries.
-
-<!-- The five questions are the ones in `OUT_OF_SCOPE` at the bottom of
-     `questions.py`, and `run_eval.py` puts them through the gate and writes
-     what happened into your run log. Swap them for your own if you'd rather —
-     just keep five of them, or the "4 of 5" above has nothing to be 4 of. -->
-
 **Why this target:**
-<!-- What did your distances look like when you set the cutoff in Milestone 4?
-     Was there a clean gap, or did the two groups overlap? -->
+When I set the cutoff in Milestone 4 the two groups separated cleanly: my
+in-scope questions scored 0.4194 to 0.5425 and the five OUT_OF_SCOPE questions
+scored 0.8246 to 0.9340, a gap of 0.28. Against questions that far away I'd
+expect 5 of 5, but the gap is an artifact of picking questions from an
+unrelated domain. Campus-shaped questions the corpus doesn't cover land much
+closer — "is Halden Hall a good option if you are vegetarian" came in at
+0.614, only 0.014 above my cutoff. 4 of 5 leaves room for one question that is
+off-topic in content but campus-flavoured in vocabulary.
 
 ---
 
-## 4. No chunk is shorter than 200 characters, since anything below that in my corpus turned out to be a heading with no content under it.
+## 4. No chunk is shorter than 200 characters
 
-A chunck under 200 characters may be missing a lot of context.
-     This criteria is to prevent that from happening, so that the
-     answers given is given in full.
-
-
+Every chunk my chunker produces is at least 200 characters long.
 
 **Why this target:**
-I want the system to be able to provide proper context and give enough information for the users to make a decision
-
+The starter's fixed-window chunker produced a 2-character chunk on one
+document — the leftover tail of a document that didn't divide evenly into
+800-character windows. A fragment that short can't answer anything, and it
+still competes for a slot in the top 5. 200 rather than 50 because the
+shortest useful unit in my corpus is a single post paragraph, and those run
+150 to 300 characters.
 
 ---
 
