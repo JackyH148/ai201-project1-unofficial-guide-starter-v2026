@@ -299,6 +299,24 @@ figures attached to the correct hall with the correct filename. I dropped the
 blending and disagreement rules and kept only the attribution one, which my
 probe answers did violate by reporting one student's wait time as fact.
 
+**3. (Unit 2)** I used Claude to go through the eval results with me. It
+spotted that `scorer.py` had failed all 15 runs even though several answers
+were plainly right. It traced that to my `expects` values being answer
+categories rather than answer text. It advised against editing `expects`
+after seeing results and suggested scoring by hand and reporting the
+mismatch, which is what I did. For criterion 1, it ran retrieval for each
+question and grepped the corpus, which is how I learned that the
+supermarket and hackathon facts don't exist anywhere in my documents.
+
+**4. (Unit 2)** The pattern in the Diagnoses section came out of that same
+pass: the misses in criteria 1 and 2 all trace back to the three questions
+whose answers aren't in the corpus. Claude also found the two different
+refusal paths, the model's and the gate's hard-coded string. It proposed the
+one-line citation fix and predicted beforehand that it could reach at most
+4/5, because the gate refusal never reaches the model. The after run matched
+that. The side effect (every checked file listed on correct answers) only
+showed up when I read the after log, not in the pass/fail counts.
+
 <!-- ── Stretch features ─────────────────────────────────────────────────────
      Doing one? Say so here BEFORE you start. A feature this README never
      claims earns nothing.
@@ -798,10 +816,72 @@ the model applied it to every answer.
 
      Milestone 5. -->
 
+Four of five criteria are still missed after the fix. I stopped after one
+change because the milestone asks for one change, measured properly. A second
+fix in the same run would have made it impossible to tell which one moved
+the numbers.
+
+**Criterion 1 — retrieved chunks contain the answer (2/5).** No retrieval
+change will fix this. Three of my five questions have no answer anywhere in
+the corpus, so hybrid search or a bigger top-k would just retrieve different
+wrong documents. The fix is in the test itself: swap the supermarket,
+hackathon and "best food" questions for questions I've checked have an
+answer in a specific file, and move the unanswerable ones into a separate
+"should refuse" set. I didn't do that here because swapping questions after
+seeing the results would look like making the test easier. It belongs at the
+start of the next unit, with the new questions committed before any run.
+
+**Criterion 2 — every answer names a source (4/5).** The remaining miss is
+the gate's hard-coded `REFUSAL` string in `gate.py`. The next change would
+be to have the gate's refusal list the files it retrieved and rejected, e.g.
+"I don't have enough information about that. Closest documents:
+admin_wifi_and_accounts.txt, …". I'd also undo the side effect of this
+unit's fix, since the model now lists every checked file on successful
+answers too. I'd reword the rule to apply only to refusals, or ask for "Source:"
+and "Checked:" on separate lines. Each of those is its own change needing its
+own run, which is why I stopped.
+
+**Criterion 4 — no chunk under 200 characters (4 of 88).** The four short
+chunks are whole documents under 200 characters, and `split_documents` never
+merges across documents. There are two options. The first is to merge each
+short `course_*_exams.txt` into its sibling `course_*.txt` before chunking,
+which keeps related material together. The second is to accept that the
+corpus has documents this short and change the criterion's reason. I
+didn't try the merge because it changes what every course question retrieves,
+which would have tangled this unit's before/after comparison.
+
+**Criterion 5 — learns from corrections (not measurable, revised).** Nothing
+in the pipeline does this. The revised criterion in `criteria.md` could be
+tested by hand: add a correction document, re-run `python app.py index`, ask
+again three times. I haven't run that test, so it stays MISSED.
+
 ## What I'd Do Differently
 
 <!-- Knowing what you know now — which of your five criteria would you write
      differently, and why?
 
      Milestone 5. -->
+
+**Criterion 5 most of all.** I wrote a wish ("I want the AI to be self
+learning") instead of a target. It had no number, no test, and described a
+feature the pipeline doesn't have. Next time every criterion has to finish
+the sentence "I'll know it's met when I run ___ and see ___."
+
+**Criterion 1 needs questions that have answers.** Criterion 1 was fine; my
+questions weren't. I'd grep the corpus for each question's answer before
+committing it, so that criterion 1 measures retrieval instead of whether the
+corpus happens to cover the topic.
+
+**Criterion 2 should say what happens on a refusal.** "Every answer names a
+source" didn't say whether a refusal counts as an answer, and I had to
+decide that after seeing the results. I'd write it as two targets: a
+correct answer cites the file it came from, and a refusal names what was
+checked. I'd also want it to catch the side effect my fix caused: listing
+unrelated files next to the real source still counts as "names a source".
+
+**My `expects` values were categories, not answers.** "place", "item" and
+"method" can never appear word-for-word in an answer, so `scorer.py` failed
+all 15 runs and I scored everything by hand. Writing `expects` as the actual
+answer text ("Halden", "burger") would have made the scorer usable.
+
 # ai201-project1-unofficial-guide-starter-v2026
