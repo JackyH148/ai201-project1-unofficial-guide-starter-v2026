@@ -78,6 +78,19 @@ I want the AI to be self learning. Since AI is not expected
 **Why this target:**
 I want the AI to learn from its mistake so that when it is asked the same thing again, it will answer correctly
 
+> **Revised in unit 2:** When an answer is wrong and I add a correction to the
+> corpus as a new document, then re-run `python app.py index`, the same
+> question returns the corrected fact, citing the correction file, in 3 of 3
+> runs.
+>
+> **Why revised:** The original has no number and nothing I can observe, so I
+> had no way to score it — "self learning" and "better than it was before"
+> can't be checked from a run log. It also describes something the pipeline
+> has no path for: nothing takes a correction or writes to the corpus or the
+> index. The revised version keeps what I wanted (a corrected answer sticks
+> the next time the question is asked) and makes it something I can run and
+> count.
+
 
 ---
 

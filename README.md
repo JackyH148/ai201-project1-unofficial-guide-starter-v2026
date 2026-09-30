@@ -571,11 +571,11 @@ written.
 
 | # | Criterion | Verdict | How I decided |
 |---|---|---|---|
-| 1 |  |  |  |
-| 2 |  |  |  |
-| 3 |  |  |  |
-| 4 |  |  |  |
-| 5 |  |  |  |
+| 1 | Retrieved chunks contain the answer (4 of 5) | MISSED | 2 of 5 on every run: only the bread and Verrill Street Grill questions retrieved a chunk that contains the answer. The supermarket and hackathon facts are not in the corpus at all, and no chunk says which hall is "best". Not close — two short of the target. |
+| 2 | Every answer names a source (5 of 5) | MISSED | 3 of 5 on every run. The two refusals (supermarket, hackathon) name no file. I counted refusals as answers because the criterion says "every answer" and I didn't exclude refusals when I wrote it. Reading it generously to get 5 of 5 would be changing the target after seeing the result. |
+| 3 | Gate stops out-of-corpus questions (4 of 5) | MET | 5 of 5 refused. The closest was 0.825, far above the 0.6 cutoff, so this isn't a borderline pass. As I said in criteria.md, that gap exists because these questions are from unrelated domains, so this target was easy to clear. |
+| 4 | No chunk shorter than 200 characters | MISSED | 4 of 88 chunks are under 200 (178, 186, 191, 194). The target said "every chunk", so one short chunk is a miss, and even the one closest to the line (194) is still under 200. |
+| 5 | Adds corrected examples to its knowledge base | MISSED | The system has no way to take a correction or write to the corpus or index, so it can't do what the criterion asks. The criterion also can't be measured as written — there's no count or observable test in it — so I've revised it in `criteria.md` (the original stays). The revised version is also MISSED, because the correction step it describes hasn't been tried. |
 
 ## Diagnoses
 
