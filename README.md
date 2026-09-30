@@ -684,27 +684,102 @@ document, re-index), and it hasn't been tried yet.
 
 ## The Improvement
 
-**What I changed:**
+**What I changed:** One line of `GROUNDING_INSTRUCTION` in `generate.py`,
+the citation rule:
 
-**Why I picked it:**
+```
+before: - Name the document your answer came from, using the filename given in each excerpt.
+after:  - Name the document your answer came from, using the filename given in each excerpt. If you don't have enough information, still name the documents you checked.
+```
 
-<!-- Connect it to a specific diagnosis above in one sentence. If you can't,
-     you picked a fix because it sounded impressive. -->
+Nothing else changed: same corpus, chunker, index, top-k 5 and cutoff 0.6.
+
+**Why I picked it:** My criterion 2 diagnosis found that the model drops the
+citation when it refuses, because the refusal rule and the citation rule
+pull against each other and nothing says which one wins. This line settles
+it.
+
+Before the run I expected at most 4/5: the hackathon refusal comes from the
+gate's hard-coded string before the model is called, so a prompt change
+can't reach it.
 
 ### Run Log — After
 
-<!-- Same format, same five criteria, three runs each.
-     `python run_eval.py --label after` -->
+Source log: `results/run_2026-09-29_2345_after.md`, produced by
+`run_eval.py::main`.
 
 | Criterion | Target | Run 1 | Run 2 | Run 3 | Verdict |
 |---|---|---|---|---|---|
-| 1. Retrieved chunk contains the answer | 4 of 5 |  |  |  |  |
-| 2. Every answer names a source | 5 of 5 |  |  |  |  |
-| 3. Gate stops out-of-corpus questions | 4 of 5 |  |  |  |  |
-| 4. | | | | | |
-| 5. | | | | | |
+| 1. Retrieved chunk contains the answer | 4 of 5 | 2/5 | 2/5 | 2/5 | MISSED |
+| 2. Every answer names a source | 5 of 5 | 4/5 | 4/5 | 4/5 | MISSED |
+| 3. Gate stops out-of-corpus questions | 4 of 5 | 5/5 | 5/5 | 5/5 | MET |
+| 4. No chunk shorter than 200 characters | 0 of 88 under 200 | 4/88 under | 4/88 under | 4/88 under | MISSED |
+| 5. Adds corrected examples to its knowledge base | learns from a correction | not measurable | not measurable | not measurable | MISSED |
+
+### Before and after, side by side
+
+| Criterion | Target | Before (runs 1/2/3) | After (runs 1/2/3) | Change |
+|---|---|---|---|---|
+| 1. Retrieved chunk contains the answer | 4 of 5 | 2/5 · 2/5 · 2/5 | 2/5 · 2/5 · 2/5 | none (retrieval untouched) |
+| 2. Every answer names a source | 5 of 5 | 3/5 · 3/5 · 3/5 | 4/5 · 4/5 · 4/5 | **+1, on every run** |
+| 3. Gate stops out-of-corpus questions | 4 of 5 | 5/5 | 5/5 | none (gate untouched) |
+| 4. No chunk under 200 characters | 0 under | 4/88 under | 4/88 under | none (chunker untouched) |
+| 5. Learns from corrections | — | not measurable | not measurable | none |
+
+Real output for the one criterion that moved: the supermarket question,
+`generate.py::answer_from_chunks`, run 1.
+
+Before (`results/run_2026-09-29_2325_before.md`):
+
+```
+I do not have enough information to answer this question.
+```
+
+After (`results/run_2026-09-29_2345_after.md`):
+
+```
+I don't have enough information to answer your question. 
+
+Documents checked: `dining_verrill_street_grill.txt`, `dining_kestrel_commons.txt`, `transit_walking.txt`, `dining_the_ridgeway_cafe.txt`, and `dining_the_ridgeway_cafe_followup.txt`.
+```
+
+The hackathon miss is unchanged in all three runs, as expected. It never
+reaches the model:
+
+```
+when does the campus host a annual hackathon   (refused by the gate, 0.6552)
+I don't have enough information about that.
+```
+
+Criteria 1, 3 and 4 get the same output as the before run, because
+retrieval, the gate and the chunker didn't change (see the Run Log — Before
+output above).
 
 **Did it help?**
+
+Yes, for what it targeted: criterion 2 went from 3/5 to 4/5 on all three
+runs, and the supermarket refusal now names its documents every time. It is
+still MISSED, because 4 of 5 isn't 5 of 5, and the remaining miss is at the
+gate, which this change can't reach.
+
+It also made citations worse in a way criterion 2 doesn't measure. The model
+now lists every file it checked on *successful* answers too, and in some runs
+it mixes the file the answer came from with files that had nothing to do
+with it. Before, the Verrill Street Grill answer cited only
+`dining_verrill_street_grill.txt`. After, run 3 reads:
+
+```
+The burger is worth going for at Verrill Street Grill, as it is the only late-night hot food on campus. 
+
+Sources checked: `dining_verrill_street_grill.txt`, `dining_verrill_street_grill_followup.txt`, `dining_north_kitchen.txt`, `dining_the_atrium.txt`, and `admin_parking_permits.txt`.
+```
+
+Here the real source is listed alongside `admin_parking_permits.txt` with
+nothing to tell them apart. A reader can no longer tell which file the claim
+came from, which is the thing a citation is for. Criterion 2 only asks
+whether a source is named, so it scores this as a pass. My rewording asked
+for "documents you checked" only when there isn't enough information, but
+the model applied it to every answer.
 
 <!-- Say plainly whether it did, and how you know. If it made things worse,
      say that — a change that backfired, honestly reported, earns full credit
