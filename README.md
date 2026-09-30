@@ -326,15 +326,237 @@ probe answers did violate by reporting one student's wait time as fact.
 
 | Criterion | Target | Run 1 | Run 2 | Run 3 | Verdict |
 |---|---|---|---|---|---|
-| 1. Retrieved chunk contains the answer | 4 of 5 |  |  |  |  |
-| 2. Every answer names a source | 5 of 5 |  |  |  |  |
-| 3. Gate stops out-of-corpus questions | 4 of 5 |  |  |  |  |
-| 4. | | | | | |
-| 5. | | | | | |
+| 1. Retrieved chunk contains the answer | 4 of 5 | 2/5 | 2/5 | 2/5 | MISSED |
+| 2. Every answer names a source | 5 of 5 | 3/5 | 3/5 | 3/5 | MISSED |
+| 3. Gate stops out-of-corpus questions | 4 of 5 | 5/5 | 5/5 | 5/5 | MET |
+| 4. No chunk shorter than 200 characters | 0 of 88 under 200 | 4/88 under | 4/88 under | 4/88 under | MISSED |
+| 5. Adds corrected examples to its knowledge base | learns from a correction | not measurable | not measurable | not measurable | MISSED |
 
-<!-- Underneath, paste the REAL output for each criterion from one of your
-     runs — the actual text your system produced, not a description of it.
-     Name the file and function that produced it. -->
+Source log: `results/run_2026-09-29_2325_before.md`, produced by
+`run_eval.py::main`. An earlier pass one minute before
+(`results/run_2026-09-29_2324_before.md`, no changes in between) gives the
+same counts for every criterion.
+
+`scorer.py::judge` marked all 15 runs `fail`. That verdict is not used above.
+My `expects` values in `questions.py` are answer *types* ("place", "item",
+"method") rather than answer text, so an exact substring match can never
+succeed. The counts above come from reading each answer and each retrieved
+chunk by hand.
+
+Criteria 1, 3 and 4 are deterministic: retrieval, the gate and the chunker
+give the same result every run, so one number goes in all three columns.
+Criterion 2 depends on the generated text, but it came out the same in all
+three runs.
+
+### Criterion 1 — retrieved chunks contain the answer (2/5)
+
+Output of `python app.py retrieve "<question>"` (`app.py::cmd_retrieve`,
+which calls `store.py::search` with top-k 5). Retrieval is deterministic, so
+this is what all three runs saw.
+
+**Hit — bread:**
+
+```
+Question: which dining hall bakes its own bread
+
+#   distance   source                           preview
+----------------------------------------------------------------------------------------------------
+1   0.5425     dining_halden_hall.txt           Halden Hall  I lived here my sophomore year. Wait ti...
+2   0.5626     dining_pellew_dining_hall_followup.txt Re: Pellew Dining Hall  Adding to what people have s...
+3   0.5711     dining_pellew_dining_hall.txt    Pellew Dining Hall  Second-year here. Wait times: 12...
+4   0.6434     dining_north_kitchen.txt         North Kitchen  Second-year here. Wait times: none, i...
+5   0.6505     dining_halden_hall_followup.txt  Re: Halden Hall  Adding to what people have said abo...
+
+Gate: best distance 0.542 is under the 0.6 cutoff
+```
+
+The full text of rank 1, `dining_halden_hall.txt`, which contains the answer:
+
+```
+Halden Hall
+
+I lived here my sophomore year. Wait times: rarely more than 8 minutes, even at noon. The thing worth going for is soup rotation, and the bread is baked on site. The thing to know is that closes at 7:00pm, which catches people out.
+
+Hours are 7:30am to 7:00pm weekdays, closed Sundays. Costs one meal swipe, or $10.00 cash.
+```
+
+**Hit — Verrill Street Grill:**
+
+```
+Question: what is worth ordering at Verrill Street Grill
+
+#   distance   source                           preview
+----------------------------------------------------------------------------------------------------
+1   0.4623     dining_verrill_street_grill_followup.txt Re: Verrill Street Grill  Adding to what people have...
+2   0.4636     dining_verrill_street_grill.txt  Verrill Street Grill  I'm a junior and I've done thi...
+3   0.6606     admin_parking_permits.txt        On the parking permits  Student permits for the west...
+4   0.6620     dining_north_kitchen.txt         North Kitchen  Second-year here. Wait times: none, i...
+5   0.6946     dining_the_atrium.txt            The Atrium  Transferred in last year, so take this w...
+
+Gate: best distance 0.462 is under the 0.6 cutoff
+```
+
+The full text of rank 2, `dining_verrill_street_grill.txt`, which contains the answer:
+
+```
+Verrill Street Grill
+
+I'm a junior and I've done this twice now. Wait times: up to 30 minutes on Friday evenings, otherwise under 10. The thing worth going for is the burger, which is the only late-night hot food on campus. The thing to know is that one register, so the queue is a single line no matter how busy.
+
+Hours are 11:00am to 1:00am daily during term. Costs declining balance, or cash after 11:00pm.
+```
+
+**Miss — supermarket.** No file in the corpus mentions a supermarket or
+groceries (`grep -ril "supermarket\|grocer" corpora/` returns nothing):
+
+```
+Question: how do you get to the nearest supermarket near campus
+
+#   distance   source                           preview
+----------------------------------------------------------------------------------------------------
+1   0.5428     dining_verrill_street_grill.txt  Verrill Street Grill  I'm a junior and I've done thi...
+2   0.5676     dining_kestrel_commons.txt       Kestrel Commons  I'm a junior and I've done this twi...
+3   0.5804     transit_walking.txt              Walking times across campus  Rough numbers, measured...
+4   0.5964     dining_the_ridgeway_cafe.txt     The Ridgeway Café  Second-year here. Wait times: 10 ...
+5   0.6065     dining_the_ridgeway_cafe_followup.txt Re: The Ridgeway Café  Adding to what people have sa...
+
+Gate: best distance 0.543 is under the 0.6 cutoff
+```
+
+**Miss — best food.** The chunks give one highlight per hall, but none ranks
+one hall as best:
+
+```
+Question: which dining area has the best food on campus
+
+#   distance   source                           preview
+----------------------------------------------------------------------------------------------------
+1   0.4589     dining_verrill_street_grill.txt  Verrill Street Grill  I'm a junior and I've done thi...
+2   0.4904     money_jobs.txt                   On-campus work  Library and dining jobs post in the ...
+3   0.5466     dining_halden_hall.txt           Halden Hall  I lived here my sophomore year. Wait ti...
+4   0.5510     housing_tamsin_court.txt         Tamsin Court — what it's actually like  I lived here...
+5   0.5677     dining_the_ridgeway_cafe.txt     The Ridgeway Café  Second-year here. Wait times: 10 ...
+
+Gate: best distance 0.459 is under the 0.6 cutoff
+```
+
+**Miss — hackathon.** No file in the corpus mentions a hackathon:
+
+```
+Question: when does the campus host a annual hackathon
+
+#   distance   source                           preview
+----------------------------------------------------------------------------------------------------
+1   0.6552     admin_wifi_and_accounts.txt      On the wifi and accounts  Your student account gives...
+2   0.6699     housing_aldridge_hall.txt        Aldridge Hall — what it's actually like  I lived her...
+3   0.6767     transit_walking.txt              Walking times across campus  Rough numbers, measured...
+4   0.6811     dining_verrill_street_grill.txt  Verrill Street Grill  I'm a junior and I've done thi...
+5   0.6814     transit_shuttle.txt              The campus shuttle  Runs a loop every 20 minutes fro...
+
+Gate: best distance 0.655 is over the 0.6 cutoff — refusing
+```
+
+### Criterion 2 — every answer names a source (3/5 each run)
+
+Answers from `generate.py::answer_from_chunks`, run 1:
+
+```
+which dining hall bakes its own bread
+Halden Hall bakes its bread on site.
+
+Source: dining_halden_hall.txt
+```
+
+```
+what is worth ordering at Verrill Street Grill
+The burger is worth going for at Verrill Street Grill, as it is the only late-night hot food on campus.
+
+Source: `dining_verrill_street_grill.txt`
+```
+
+```
+which dining area has the best food on campus
+The provided documents do not state which dining area has the best food on campus.
+
+Source: dining_verrill_street_grill.txt, dining_halden_hall.txt, dining_the_ridgeway_cafe.txt
+```
+
+The two misses are both refusals, and they came from different stages:
+
+```
+how do you get to the nearest supermarket near campus   (passed the gate, 0.5428 — model refused)
+I do not have enough information to answer this question.
+```
+
+```
+when does the campus host a annual hackathon   (refused by the gate, 0.6552)
+I don't have enough information about that.
+```
+
+### Criterion 3 — gate stops out-of-corpus questions (5/5)
+
+From `run_eval.py::check_out_of_scope`, cutoff 0.6:
+
+| Out-of-scope question | Best distance | Gate |
+|---|---|---|
+| What is the capital of Mongolia? | 0.825 | refused |
+| How do I change the oil in a diesel engine? | 0.934 | refused |
+| Who won the 1994 World Cup? | 0.886 | refused |
+| What is the recommended dosage of ibuprofen for a headache? | 0.844 | refused |
+| How do I write a for loop in Rust? | 0.896 | refused |
+
+### Criterion 4 — no chunk shorter than 200 characters (4 of 88 under)
+
+`chunker.py::split_documents` produces 88 chunks, and four are under 200
+characters: 178, 186, 191 and 194. Output of
+`python app.py chunks --from-doc <file>` (`app.py::cmd_chunks`) for each:
+
+```
+======================================================================
+Chunk 1  |  source: course_hist_118_exams.txt#0  |  produced by: chunker.py::split_documents
+======================================================================
+HIST 118 Modern World History — assessment
+
+No exams; two essays and a final project. Not curved.
+
+The essay rubric is posted in week 2 and it's followed exactly — read it early.
+
+======================================================================
+Chunk 1  |  source: course_math_220_exams.txt#0  |  produced by: chunker.py::split_documents
+======================================================================
+MATH 220 Linear Algebra — assessment
+
+Two midterms and a cumulative final. Curved to a b- median.
+
+The problem sets are the course; the lectures make sense afterwards rather than during.
+
+======================================================================
+Chunk 1  |  source: course_biol_160_exams.txt#0  |  produced by: chunker.py::split_documents
+======================================================================
+BIOL 160 Cell Biology — assessment
+
+Four unit tests and a cumulative final. Not curved.
+
+The unit tests come fast, roughly every three weeks; falling behind once is very hard to recover from.
+
+======================================================================
+Chunk 1  |  source: course_phys_130_exams.txt#0  |  produced by: chunker.py::split_documents
+======================================================================
+PHYS 130 Mechanics — assessment
+
+Three midterms, no final, plus a lab practical. Not curved, but the lowest midterm is dropped.
+
+The lab practical is worth 20% and almost nobody prepares for it.
+```
+
+Each short chunk is the whole of its source document (`#0` and nothing after
+it), so these four files are shorter than 200 characters from the start.
+
+### Criterion 5 — learns from corrections (not measurable)
+
+The pipeline has no path that writes back to the corpus or the index:
+`app.py ask` only reads. No test can be run against this criterion as it is
+written.
 
 ## Verdicts
 
