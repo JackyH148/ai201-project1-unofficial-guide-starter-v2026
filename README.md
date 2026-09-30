@@ -597,6 +597,91 @@ written.
 
      Milestone 3. -->
 
+### The pattern: criteria 1 and 2 fail on the same three questions
+
+Every miss in criteria 1 and 2 comes from a question whose answer isn't in
+the corpus: supermarket, hackathon and "best food". When the answer did exist
+(bread, Verrill Street Grill), retrieval found it in the top 2 and the model
+cited the right file in 6 of 6 runs. That makes it one problem, not five:
+**three of my five test questions ask for something my corpus doesn't
+contain.** Two of them then fail criterion 2 too, because both of the ways my
+pipeline refuses say nothing about sources.
+
+### Criterion 1 — stage: loading (the corpus), not retrieval
+
+- **Supermarket and hackathon.** The loaded documents contain neither fact.
+  `grep -ril "supermarket\|grocer\|hackathon" corpora/` returns nothing across
+  all the files `ingest.py::load_documents` reads. Retrieval returned the
+  nearest neighbours it had (dining halls, `transit_walking.txt`, the
+  shuttle), and no chunk could contain an answer that was never loaded.
+- **Best food.** The dining documents each give one highlight ("The thing
+  worth going for is…") but none compares halls, so there's no "best" to
+  retrieve. The question asks for an opinion across documents that no single
+  document holds.
+
+Embedding has a part in it but didn't cause the miss. Distance measures
+topic, not whether the answer is there: the supermarket question scored
+0.5428 and the bread question 0.5425. They're almost identical, but only one
+has an answer. The embedding also matches on surface words: "best food on
+campus" pulled `money_jobs.txt` at rank 2 because it mentions dining jobs,
+and "Verrill Street Grill" pulled `admin_parking_permits.txt` because it
+mentions parking on Verrill Street. That fills top-k slots with noise, but
+both questions that had an answer still got it.
+
+The root cause is in how I wrote the questions: I didn't check the corpus
+before writing three of them. Criterion 1 measures retrieval, but it only
+works as a test when every question has an answer to retrieve.
+
+### Criterion 2 — stage: generation (supermarket) and the gate (hackathon)
+
+The two misses fail in two different places:
+
+- **Supermarket — generation.** It passed the gate (0.5428 < 0.6), so it
+  reached the model. `GROUNDING_INSTRUCTION` in `generate.py` has two rules
+  that pull against each other: "If the documents don't cover the question,
+  say you don't have enough information" and "Name the document your answer
+  came from". When the model refuses, there's no document the answer "came
+  from", so it follows the first rule and drops the second. All three runs
+  did this: "I do not have enough information to answer this question."
+- **Hackathon — the gate, before generation.** It scored 0.6552, over the
+  cutoff, so `gate.py` returned the fixed string `REFUSAL = "I don't have
+  enough information about that."` The model was never called. That string
+  is hard-coded and has nowhere to put a filename, so a gate refusal can
+  never pass criterion 2.
+
+"Best food" shows the model can cite files when it refuses. It said the
+documents don't rank halls and still listed the three files it looked at. So
+a refusal with no source isn't unavoidable: it's the model resolving an
+unclear instruction one way on some questions and another way on others.
+
+### Criterion 4 — stage: loading (short source documents), then chunking
+
+The four short chunks are four whole documents. The raw files are 183, 189,
+194 and 197 bytes on disk (`course_hist_118_exams.txt`,
+`course_math_220_exams.txt`, `course_biol_160_exams.txt`,
+`course_phys_130_exams.txt`), and each comes out as a single chunk (`#0`) of
+178–194 characters once `ingest.py::clean_text` strips whitespace.
+
+`chunker.py::split_documents` can't make them longer, because it chunks one
+document at a time: `pieces` resets at the start of each `for doc in
+documents` loop, so a short document is never merged with its neighbour.
+The 120-character `MIN_SIZE` only merges short *paragraphs* inside a
+document. The other five `*_exams.txt` files are 209–242 bytes, just over
+the line. So this isn't a chunker bug. The target assumed every document is
+at least 200 characters, and nine of these files sit right around that
+length.
+
+Each short file has siblings about the same course (`course_hist_118.txt`,
+`course_hist_118_workload.txt`), so the material a short chunk needs does
+exist, just in a separate document.
+
+### Criterion 5 — no stage
+
+No stage failed, because no stage does this. Nothing in the pipeline takes
+a correction or writes to the corpus or the index. The revised criterion in
+`criteria.md` describes something you'd do by hand (add a correction
+document, re-index), and it hasn't been tried yet.
+
 ## The Improvement
 
 **What I changed:**
